@@ -1,4 +1,8 @@
-.vs
+.git/
+.cspell/
+.build/
+.vs/
+
 *.ini
 *.exe
 *.pdb
@@ -8,5 +12,9 @@
 *.res
 *_shader.h
 
-.git/
-.cspell/
+*.tlog
+*.ilk
+*.exe.recipe
+*.log
+*.idb
+*.vcxproj.user

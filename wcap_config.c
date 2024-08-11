@@ -437,13 +437,13 @@ static LRESULT CALLBACK Config__DialogProc(HWND Window, UINT Message, WPARAM WPa
 		{
 			// this expects caller has called CoInitializeEx with single or apartment-threaded model
 			IFileDialog* Dialog;
-			HR(CoCreateInstance(&CLSID_FileOpenDialog, NULL, CLSCTX_INPROC, &IID_IFileDialog, &Dialog));
+			HR(CoCreateInstance(&CLSID_FileOpenDialog, NULL, CLSCTX_INPROC, &IID_IFileDialog, (LPVOID*)&Dialog));
 
 			WCHAR Text[MAX_PATH];
 			GetDlgItemTextW(Window, ID_OUTPUT_FOLDER, Text, _countof(Text));
 
 			IShellItem* Folder;
-			if (SUCCEEDED(SHCreateItemFromParsingName(Text, NULL, &IID_IShellItem, &Folder)))
+			if (SUCCEEDED(SHCreateItemFromParsingName(Text, NULL, &IID_IShellItem, (LPVOID*)&Folder)))
 			{
 				HR(IFileDialog_SetFolder(Dialog, Folder));
 				IShellItem_Release(Folder);

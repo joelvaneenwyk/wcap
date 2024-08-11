@@ -5,5 +5,7 @@
         "editor.semanticHighlighting.enabled": true,
         "editor.suggest.insertMode": "replace",
         "editor.wordBasedSuggestions": "off"
-    }
+    },
+    "clangd.enableCodeCompletion": true,
+    "clangd.restartAfterCrash": true
 }

@@ -3,6 +3,11 @@
 .build/
 .vs/
 
+bin/
+wcap/
+x64/
+Win32/
+
 *.ini
 *.exe
 *.pdb

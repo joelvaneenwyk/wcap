@@ -189,7 +189,7 @@ static void ShowFileInFolder(LPCWSTR Filename)
 	if (Filename[0] && SUCCEEDED(SHParseDisplayName(Filename, NULL, &List, 0, &Flags)))
 	{
 		HR(SHOpenFolderAndSelectItems(List, 0, NULL, 0));
-		CoTaskMemFree(List);
+		CoTaskMemFree((LPVOID)List);
 	}
 }
 
@@ -357,7 +357,7 @@ static ID3D11Device* CreateDevice(void)
 			if (SUCCEEDED(IDXGIFactory_QueryInterface(Factory, &IID_IDXGIFactory6, (void**)&Factory6)))
 			{
 				DXGI_GPU_PREFERENCE Preference = gConfig.HardwarePreferIntegrated ? DXGI_GPU_PREFERENCE_MINIMUM_POWER : DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE;
-				if (FAILED(IDXGIFactory6_EnumAdapterByGpuPreference(Factory6, 0, Preference, &IID_IDXGIAdapter, &Adapter)))
+				if (FAILED(IDXGIFactory6_EnumAdapterByGpuPreference(Factory6, 0, Preference, &IID_IDXGIAdapter, (void**)&Adapter)))
 				{
 					// just to be safe
 					Adapter = NULL;
@@ -385,7 +385,7 @@ static ID3D11Device* CreateDevice(void)
 	{
 		IDXGIAdapter_Release(Adapter);
 	}
-		
+
 #ifdef _DEBUG
 	ID3D11InfoQueue* Info;
 	HR(ID3D11Device_QueryInterface(Device, &IID_ID3D11InfoQueue, &Info));

@@ -317,7 +317,7 @@ BOOL Encoder_Start(Encoder* Encoder, ID3D11Device* Device, LPWSTR FileName, cons
 		HR(IMFMediaType_SetUINT64(Type, &MF_MT_FRAME_SIZE, MFT64(OutputWidth, OutputHeight)));
 		HR(IMFMediaType_SetUINT32(Type, &MF_MT_AVG_BITRATE, Config->Config->VideoBitrate * 1000));
 
-		hr = IMFSinkWriter_AddStream(Writer, Type, &Encoder->VideoStreamIndex);
+		hr = IMFSinkWriter_AddStream(Writer, Type, (DWORD*)&Encoder->VideoStreamIndex);
 		IMFMediaType_Release(Type);
 
 		if (FAILED(hr))

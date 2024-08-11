@@ -633,7 +633,8 @@ static void Config__DoDialogLayout(const Config__DialogLayout* Layout, BYTE* Dat
 			{
 				if (!OnlyCheckbox)
 				{
-					// reduce width so checbox can fit other control on the right
+					// reduce width so checkbox can fit other
+					// control on the right
 					ItemW = Item->Width;
 				}
 				Data = Config__DoDialogItem(Data, Item->Text, ItemId, CONTROL_BUTTON, WS_TABSTOP | BS_AUTOCHECKBOX, ItemX, Y, ItemW, ITEM_HEIGHT);
@@ -854,7 +855,7 @@ void Config_Save(Config* Config, LPCWSTR FileName)
 	WritePrivateProfileStringW(INI_SECTION, L"OnlyClientArea",            Config->OnlyClientArea           ? L"1" : L"0", FileName);
 	WritePrivateProfileStringW(INI_SECTION, L"CaptureAudio",              Config->CaptureAudio             ? L"1" : L"0", FileName);
 	WritePrivateProfileStringW(INI_SECTION, L"HardwareEncoder",           Config->HardwareEncoder          ? L"1" : L"0", FileName);
-	WritePrivateProfileStringW(INI_SECTION, L"HardwarePreferIntegratged", Config->HardwarePreferIntegrated ? L"1" : L"0", FileName);
+	WritePrivateProfileStringW(INI_SECTION, L"HardwarePreferIntegrated",  Config->HardwarePreferIntegrated ? L"1" : L"0", FileName);
 	// output
 	WritePrivateProfileStringW(INI_SECTION, L"OutputFolder",      Config->OutputFolder, FileName);
 	WritePrivateProfileStringW(INI_SECTION, L"OpenFolder",        Config->OpenFolder        ? L"1" : L"0", FileName);

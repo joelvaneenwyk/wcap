@@ -425,7 +425,7 @@ BOOL Encoder_Start(Encoder* Encoder, ID3D11Device* Device, LPWSTR FileName, cons
 				HR(IMFMediaType_SetUINT32(Type, &MF_MT_AUDIO_AVG_BYTES_PER_SECOND, Config->Config->AudioBitrate * 1000 / 8));
 			}
 
-			hr = IMFSinkWriter_AddStream(Writer, Type, &Encoder->AudioStreamIndex);
+			hr = IMFSinkWriter_AddStream(Writer, Type, (DWORD*)&Encoder->AudioStreamIndex);
 			IMFMediaType_Release(Type);
 
 			if (FAILED(hr))

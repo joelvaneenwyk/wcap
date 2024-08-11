@@ -4,6 +4,9 @@
 *.pdb
 *.lib
 *.exp
+*.obj
+*.res
 *_shader.h
+
 .git/
 .cspell/

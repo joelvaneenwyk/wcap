@@ -1,4 +1,7 @@
+#pragma once
+
 #include "wcap.h"
+
 #include "wcap_config.h"
 
 #include <d3d11.h>

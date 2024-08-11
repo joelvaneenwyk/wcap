@@ -1,4 +1,7 @@
+#include "wcap.h"
+
 #include "wcap_capture.h"
+
 #include <dwmapi.h>
 #include <roapi.h>
 

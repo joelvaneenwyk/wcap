@@ -1,4 +1,7 @@
+#include "wcap.h"
+
 #include "wcap_encoder.h"
+
 #include <evr.h>
 #include <cguid.h>
 #include <mfapi.h>

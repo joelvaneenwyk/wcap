@@ -1,4 +1,5 @@
 #include "wcap.h"
+
 #include "wcap_config.h"
 #include "wcap_audio_capture.h"
 #include "wcap_capture.h"
@@ -1181,7 +1182,7 @@ static LRESULT CALLBACK WindowProc(HWND Window, UINT Message, WPARAM WParam, LPA
 					const WCHAR* Lines[] = { Line1, Line2 };
 					const int LineLengths[] = { _countof(Line1) - 1, _countof(Line2) - 1 };
 					int Widths[_countof(Lines)];
-					int Height;
+					int Height = 0;
 
 					int TotalWidth = 0;
 					int TotalHeight = 0;

@@ -1,3 +1,5 @@
+#include "wcap.h"
+
 #include "wcap_config.h"
 #include "wcap_capture.h"
 
@@ -791,7 +793,7 @@ static void Config__GetStr(LPCWSTR FileName, LPCWSTR Key, DWORD* Value, const LP
 static void Config__ValidateVideoProfile(Config* Config)
 {
 	const int* Profiles = gValidVideoProfiles[Config->VideoCodec];
-	DWORD LastProfile;
+	DWORD LastProfile = -1;
 	for (int i=0; Profiles[i] != -1; i++)
 	{
 		LastProfile = Profiles[i];

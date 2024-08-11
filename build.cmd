@@ -7,7 +7,7 @@ where /Q cl.exe || (
   if "!VS!" equ "" (
     echo ERROR: Visual Studio installation not found
     exit /b 1
-  )  
+  )
   call "!VS!\VC\Auxiliary\Build\vcvarsall.bat" amd64 || exit /b 1
 )
 

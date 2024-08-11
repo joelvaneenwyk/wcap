@@ -14,7 +14,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          path: repo
           fetch-depth: 0
           submodules: recursive
 

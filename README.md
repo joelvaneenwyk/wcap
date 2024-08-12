@@ -1,8 +1,9 @@
 # wcap
 
-Simple and efficient screen recording utility for Windows.
+> [!WARNING]
+> This is a fork and any changes made are not production ready. Use at your own risk!
 
-Get latest binary here: [wcap.exe][] (**WARNING**: Windows Defender or other AV software might report false positive detection)
+Simple and efficient screen recording utility for Windows.
 
 ## Features
 

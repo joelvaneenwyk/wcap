@@ -1,7 +1,6 @@
 #pragma once
 
 #include "wcap.h"
-
 #include "wcap_config.h"
 #include "wcap_tex_resize.h"
 #include "wcap_yuv_convert.h"

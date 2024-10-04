@@ -89,8 +89,6 @@ different dither methods.
 
 ## Building
 
-========
-
 To build the binary from source code, have [Visual Studio][VS] installed, and simply run `build.cmd`.
 
 ## Changelog

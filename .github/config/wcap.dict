@@ -13,6 +13,7 @@ DQTAT
 DQTYPE
 droppped
 DWMWA
+dxbc
 enabledelayedexpansion
 endlocal
 ERRORLEVEL
@@ -54,6 +55,7 @@ Shor
 shorcuts
 strmiids
 TASKBARCREATED
+TASKFILE
 tcuts
 tlog
 ucrt

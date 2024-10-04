@@ -2,7 +2,7 @@
 
 #include "wcap_config.h"
 #include "wcap_audio_capture.h"
-#include "wcap_capture.h"
+#include "wcap_screen_capture.h"
 #include "wcap_encoder.h"
 
 #include <dxgi1_6.h>
@@ -13,26 +13,30 @@
 #include <shellapi.h>
 #include <windowsx.h>
 
-#pragma comment (lib, "ntdll.lib")
-#pragma comment (lib, "kernel32.lib")
-#pragma comment (lib, "user32.lib")
-#pragma comment (lib, "gdi32.lib")
-#pragma comment (lib, "msimg32.lib")
-#pragma comment (lib, "dxgi.lib")
-#pragma comment (lib, "d3d11.lib")
-#pragma comment (lib, "dwmapi.lib")
-#pragma comment (lib, "shell32.lib")
-#pragma comment (lib, "shlwapi.lib")
-#pragma comment (lib, "mfplat.lib")
-#pragma comment (lib, "mfuuid.lib")
-#pragma comment (lib, "mfreadwrite.lib")
-#pragma comment (lib, "evr.lib")
-#pragma comment (lib, "strmiids.lib")
-#pragma comment (lib, "ole32.lib")
-#pragma comment (lib, "wmcodecdspuuid.lib")
-#pragma comment (lib, "avrt.lib")
-#pragma comment (lib, "uxtheme.lib")
-#pragma comment (lib, "WindowsApp.lib")
+#pragma comment (lib, "ntdll")
+#pragma comment (lib, "kernel32")
+#pragma comment (lib, "user32")
+#pragma comment (lib, "gdi32")
+#pragma comment (lib, "msimg32")
+#pragma comment (lib, "dxgi")
+#pragma comment (lib, "d3dcompiler")
+#pragma comment (lib, "d3d11")
+#pragma comment (lib, "dwmapi")
+#pragma comment (lib, "shell32")
+#pragma comment (lib, "shlwapi")
+#pragma comment (lib, "mfplat")
+#pragma comment (lib, "mfuuid")
+#pragma comment (lib, "mfreadwrite")
+#pragma comment (lib, "evr")
+#pragma comment (lib, "strmiids")
+#pragma comment (lib, "ksuser")
+#pragma comment (lib, "mmdevapi")
+#pragma comment (lib, "ole32")
+#pragma comment (lib, "wmcodecdspuuid")
+#pragma comment (lib, "avrt")
+#pragma comment (lib, "uxtheme")
+#pragma comment (lib, "OneCore")
+#pragma comment (lib, "CoreMessaging")
 
 // this is needed to be able to use Nvidia Media Foundation encoders on Optimus systems
 __declspec(dllexport) DWORD NvOptimusEnablement = 1;
@@ -54,7 +58,7 @@ __declspec(dllexport) DWORD NvOptimusEnablement = 1;
 
 #define HOT_RECORD_WINDOW  1
 #define HOT_RECORD_MONITOR 2
-#define HOT_RECORD_RECT    3
+#define HOT_RECORD_REGION  3
 
 #define WCAP_RESIZE_NONE 0
 #define WCAP_RESIZE_TL   1
@@ -71,9 +75,6 @@ __declspec(dllexport) DWORD NvOptimusEnablement = 1;
 #define WCAP_UI_FONT_SIZE 16
 
 #define WCAP_RECT_BORDER 2
-
-// 1 second, we'll be reading it every 100msec
-#define AUDIO_CAPTURE_BUFFER_DURATION_100NS 10 * 1000 * 1000
 
 // constants
 static WCHAR gConfigPath[MAX_PATH];
@@ -92,6 +93,7 @@ static BOOL gRecordingStarted;
 static BOOL gRecording;
 static DWORD gRecordingLimitFramerate;
 static DWORD gRecordingDroppedFrames;
+static UINT64 gRecordingLastFrame;
 static UINT64 gRecordingNextEncode;
 static UINT64 gRecordingNextTooltip;
 static EXECUTION_STATE gRecordingState;
@@ -116,7 +118,7 @@ static BOOL gRectSetSizeClick;
 static HWND gWindow;
 static Config gConfig;
 static AudioCapture gAudio;
-static Capture gCapture;
+static ScreenCapture gCapture;
 static Encoder gEncoder;
 
 static void ShowNotification(LPCWSTR Message, LPCWSTR Title, DWORD Flags)
@@ -193,7 +195,7 @@ static void ShowFileInFolder(LPCWSTR Filename)
 	}
 }
 
-static void StartRecording(ID3D11Device* Device)
+static void StartRecording(ID3D11Device* Device, HWND Window)
 {
 	SYSTEMTIME Time;
 	GetLocalTime(&Time);
@@ -232,14 +234,15 @@ static void StartRecording(ID3D11Device* Device)
 
 	if (gConfig.CaptureAudio)
 	{
-		if (!AudioCapture_Start(&gAudio, AUDIO_CAPTURE_BUFFER_DURATION_100NS))
+		HWND ApplicationWindow = gConfig.ApplicationLocalAudio && AudioCapture_CanCaptureApplicationLocal() ? Window : NULL;
+		if (!AudioCapture_Start(&gAudio, ApplicationWindow))
 		{
 			ShowNotification(L"Cannot capture audio!", L"Cannot Start Recording", NIIF_WARNING);
-			Capture_Stop(&gCapture);
+			ScreenCapture_Stop(&gCapture);
 			ID3D11Device_Release(Device);
 			return;
 		}
-		EncConfig.AudioFormat = gAudio.format;
+		EncConfig.AudioFormat = gAudio.Format;
 	}
 
 	if (!Encoder_Start(&gEncoder, Device, gRecordingPath, &EncConfig))
@@ -248,15 +251,16 @@ static void StartRecording(ID3D11Device* Device)
 		{
 			AudioCapture_Stop(&gAudio);
 		}
-		Capture_Stop(&gCapture);
+		ScreenCapture_Stop(&gCapture);
 		ID3D11Device_Release(Device);
 		return;
 	}
 
 	gRecordingNextTooltip = 0;
 	gRecordingNextEncode = 0;
+	gRecordingLastFrame = 0;
 	gRecordingDroppedFrames = 0;
-	Capture_Start(&gCapture, gConfig.MouseCursor);
+	ScreenCapture_Start(&gCapture, gConfig.MouseCursor, gConfig.ShowRecordingBorder);
 
 	if (gConfig.CaptureAudio)
 	{
@@ -279,26 +283,26 @@ static void EncodeCapturedAudio(void)
 		return;
 	}
 
-	AudioCaptureData data;
-	while (AudioCapture_GetData(&gAudio, &data, gEncoder.StartTime))
+	AudioCaptureData Data;
+	while (AudioCapture_GetData(&gAudio, &Data, gEncoder.StartTime))
 	{
-		UINT32 FramesToEncode = (UINT32)data.count;
-		if (data.time < gEncoder.StartTime)
+		UINT32 FramesToEncode = (UINT32)Data.Count;
+		if (Data.Time < gEncoder.StartTime)
 		{
-			const UINT32 SampleRate = gAudio.format->nSamplesPerSec;
-			const UINT32 BytesPerFrame = gAudio.format->nBlockAlign;
+			const UINT32 SampleRate = gAudio.Format->nSamplesPerSec;
+			const UINT32 BytesPerFrame = gAudio.Format->nBlockAlign;
 
 			// figure out how much time (100nsec units) and frame count to skip from current buffer
-			UINT64 TimeToSkip = gEncoder.StartTime - data.time;
+			UINT64 TimeToSkip = gEncoder.StartTime - Data.Time;
 			UINT32 FramesToSkip = (UINT32)((TimeToSkip * SampleRate - 1) / MF_UNITS_PER_SECOND + 1);
 			if (FramesToSkip < FramesToEncode)
 			{
 				// need to skip part of captured data
-				data.time += FramesToSkip * MF_UNITS_PER_SECOND / SampleRate;
+				Data.Time += FramesToSkip * MF_UNITS_PER_SECOND / SampleRate;
 				FramesToEncode -= FramesToSkip;
-				if (data.samples)
+				if (Data.Samples)
 				{
-					data.samples = (BYTE*)data.samples + FramesToSkip * BytesPerFrame;
+					Data.Samples = (BYTE*)Data.Samples + FramesToSkip * BytesPerFrame;
 				}
 			}
 			else
@@ -309,10 +313,10 @@ static void EncodeCapturedAudio(void)
 		}
 		if (FramesToEncode != 0)
 		{
-			Assert(data.time >= gEncoder.StartTime);
-			Encoder_NewSamples(&gEncoder, data.samples, FramesToEncode, data.time, gTickFreq.QuadPart);
+			Assert(Data.Time >= gEncoder.StartTime);
+			Encoder_NewSamples(&gEncoder, Data.Samples, FramesToEncode, Data.Time, gTickFreq.QuadPart);
 		}
-		AudioCapture_ReleaseData(&gAudio, &data);
+		AudioCapture_ReleaseData(&gAudio, &Data);
 	}
 }
 
@@ -330,7 +334,7 @@ static void StopRecording(void)
 	}
 	KillTimer(gWindow, WCAP_VIDEO_UPDATE_TIMER);
 
-	Capture_Stop(&gCapture);
+	ScreenCapture_Stop(&gCapture);
 	Encoder_Stop(&gEncoder);
 	if (gConfig.OpenFolder)
 	{
@@ -371,7 +375,7 @@ static ID3D11Device* CreateDevice(void)
 	ID3D11Device* Device;
 
 	UINT flags = 0;
-#ifdef _DEBUG
+#ifndef NDEBUG
 	flags |= D3D11_CREATE_DEVICE_DEBUG;
 #endif
 	// if adapter is selected then driver type must be unknown
@@ -386,13 +390,16 @@ static ID3D11Device* CreateDevice(void)
 		IDXGIAdapter_Release(Adapter);
 	}
 
-#ifdef _DEBUG
-	ID3D11InfoQueue* Info;
-	HR(ID3D11Device_QueryInterface(Device, &IID_ID3D11InfoQueue, &Info));
-	ID3D11InfoQueue_SetBreakOnSeverity(Info, D3D11_MESSAGE_SEVERITY_CORRUPTION, TRUE);
-	ID3D11InfoQueue_SetBreakOnSeverity(Info, D3D11_MESSAGE_SEVERITY_ERROR, TRUE);
-	ID3D11InfoQueue_Release(Info);
-#endif
+	if (flags & D3D11_CREATE_DEVICE_DEBUG)
+	{
+		ID3D11InfoQueue* Info;
+		if (SUCCEEDED(ID3D11Device_QueryInterface(Device, &IID_ID3D11InfoQueue, &Info)))
+		{
+			ID3D11InfoQueue_SetBreakOnSeverity(Info, D3D11_MESSAGE_SEVERITY_CORRUPTION, TRUE);
+			ID3D11InfoQueue_SetBreakOnSeverity(Info, D3D11_MESSAGE_SEVERITY_ERROR, TRUE);
+			ID3D11InfoQueue_Release(Info);
+		}
+	}
 
 	return Device;
 }
@@ -437,14 +444,14 @@ static void CaptureWindow(void)
 		return;
 	}
 
-	if (!Capture_CreateForWindow(&gCapture, Device, Window, gConfig.OnlyClientArea))
+	if (!ScreenCapture_CreateForWindow(&gCapture, Device, Window, gConfig.OnlyClientArea, !gConfig.KeepRoundedWindowCorners))
 	{
 		ID3D11Device_Release(Device);
 		ShowNotification(L"Cannot record selected window!", L"Error", NIIF_WARNING);
 		return;
 	}
 
-	StartRecording(Device);
+	StartRecording(Device, Window);
 }
 
 static void CaptureMonitor(void)
@@ -465,16 +472,16 @@ static void CaptureMonitor(void)
 		return;
 	}
 
-	if (!Capture_CreateForMonitor(&gCapture, Device, Monitor, NULL))
+	if (!ScreenCapture_CreateForMonitor(&gCapture, Device, Monitor, NULL))
 	{
 		ShowNotification(L"Cannot record selected monitor!", L"Error", NIIF_WARNING);
 		return;
 	}
 
-	StartRecording(Device);
+	StartRecording(Device, NULL);
 }
 
-static void CaptureRectangleInit(void)
+static void CaptureRegionInit(void)
 {
 	POINT Mouse;
 	GetCursorPos(&Mouse);
@@ -549,7 +556,7 @@ static void CaptureRectangleInit(void)
 	InvalidateRect(gWindow, NULL, FALSE);
 }
 
-static void CaptureRectangleDone(void)
+static void CaptureRegionDone(void)
 {
 	ShowWindow(gWindow, SW_HIDE);
 	SetCursor(gCursorArrow);
@@ -571,9 +578,9 @@ static void CaptureRectangleDone(void)
 	}
 }
 
-static void CaptureRectangle(void)
+static void CaptureRegion(void)
 {
-	CaptureRectangleDone();
+	CaptureRegionDone();
 
 	MONITORINFO Info = { .cbSize = sizeof(Info) };
 	GetMonitorInfoW(gRectMonitor, &Info);
@@ -603,13 +610,13 @@ static void CaptureRectangle(void)
 		return;
 	}
 
-	if (!Capture_CreateForMonitor(&gCapture, Device, gRectMonitor, &Rect))
+	if (!ScreenCapture_CreateForMonitor(&gCapture, Device, gRectMonitor, &Rect))
 	{
 		ShowNotification(L"Cannot record monitor!", L"Error", NIIF_WARNING);
 		return;
 	}
 
-	StartRecording(Device);
+	StartRecording(Device, NULL);
 }
 
 static int GetPointResize(int X, int Y)
@@ -658,7 +665,7 @@ void DisableHotKeys(void)
 {
 	UnregisterHotKey(gWindow, HOT_RECORD_MONITOR);
 	UnregisterHotKey(gWindow, HOT_RECORD_WINDOW);
-	UnregisterHotKey(gWindow, HOT_RECORD_RECT);
+	UnregisterHotKey(gWindow, HOT_RECORD_REGION);
 }
 
 BOOL EnableHotKeys(void)
@@ -672,9 +679,9 @@ BOOL EnableHotKeys(void)
 	{
 		Success = Success && RegisterHotKey(gWindow, HOT_RECORD_WINDOW, HOT_GET_MOD(gConfig.ShortcutWindow), HOT_GET_KEY(gConfig.ShortcutWindow));
 	}
-	if (gConfig.ShortcutRect)
+	if (gConfig.ShortcutRegion)
 	{
-		Success = Success && RegisterHotKey(gWindow, HOT_RECORD_RECT, HOT_GET_MOD(gConfig.ShortcutRect), HOT_GET_KEY(gConfig.ShortcutRect));
+		Success = Success && RegisterHotKey(gWindow, HOT_RECORD_REGION, HOT_GET_MOD(gConfig.ShortcutRegion), HOT_GET_KEY(gConfig.ShortcutRegion));
 	}
 	return Success;
 }
@@ -712,7 +719,7 @@ static LRESULT CALLBACK WindowProc(HWND Window, UINT Message, WPARAM WParam, LPA
 	{
 		if (gRectContext)
 		{
-			CaptureRectangleDone();
+			CaptureRegionDone();
 		}
 		return 0;
 	}
@@ -722,7 +729,7 @@ static LRESULT CALLBACK WindowProc(HWND Window, UINT Message, WPARAM WParam, LPA
 		{
 			if (WParam == FALSE)
 			{
-				CaptureRectangleDone();
+				CaptureRegionDone();
 				return 0;
 			}
 		}
@@ -733,14 +740,14 @@ static LRESULT CALLBACK WindowProc(HWND Window, UINT Message, WPARAM WParam, LPA
 		{
 			if (WParam == VK_ESCAPE)
 			{
-				CaptureRectangleDone();
+				CaptureRegionDone();
 				return 0;
 			}
 			else if (WParam == VK_RETURN)
 			{
 				if (gRectSelected)
 				{
-					CaptureRectangle();
+					CaptureRegion();
 				}
 				return 0;
 			}
@@ -1027,10 +1034,10 @@ static LRESULT CALLBACK WindowProc(HWND Window, UINT Message, WPARAM WParam, LPA
 					CaptureMonitor();
 					gRecordingStarted = FALSE;
 				}
-				else if (WParam == HOT_RECORD_RECT)
+				else if (WParam == HOT_RECORD_REGION)
 				{
 					gRecordingStarted = TRUE;
-					CaptureRectangleInit();
+					CaptureRegionInit();
 					gRecordingStarted = FALSE;
 				}
 			}
@@ -1176,7 +1183,7 @@ static LRESULT CALLBACK WindowProc(HWND Window, UINT Message, WPARAM WParam, LPA
 					SelectObject(Context, GetStockObject(DC_PEN));
 					SelectObject(Context, GetStockObject(DC_BRUSH));
 
-					const WCHAR Line1[] = L"Select area with the mouse and press ENTER to start capture.";
+					const WCHAR Line1[] = L"Select region with the mouse and press ENTER to start capture.";
 					const WCHAR Line2[] = L"Press ESC to cancel.";
 
 					const WCHAR* Lines[] = { Line1, Line2 };
@@ -1250,18 +1257,19 @@ static LRESULT CALLBACK WindowProc(HWND Window, UINT Message, WPARAM WParam, LPA
 	return DefWindowProcW(Window, Message, WParam, LParam);
 }
 
-static void OnCaptureClose(void)
+static bool OnCaptureFrame(ScreenCapture* Capture, ScreenCaptureFrame* Frame)
 {
-	PostMessageW(gWindow, WM_WCAP_STOP_CAPTURE, 0, 0);
-}
+	if (Frame == NULL)
+	{
+		PostMessageW(gWindow, WM_WCAP_STOP_CAPTURE, 0, 0);
+		return true;
+	}
 
-static void OnCaptureFrame(ID3D11Texture2D* Texture, RECT Rect, UINT64 Time)
-{
 	BOOL DoEncode = TRUE;
 	DWORD LimitFramerate = gRecordingLimitFramerate;
 	if (LimitFramerate != 0)
 	{
-		if (Time * LimitFramerate < gRecordingNextEncode)
+		if (Frame->Time * LimitFramerate < gRecordingNextEncode)
 		{
 			DoEncode = FALSE;
 		}
@@ -1269,15 +1277,22 @@ static void OnCaptureFrame(ID3D11Texture2D* Texture, RECT Rect, UINT64 Time)
 		{
 			if (gRecordingNextEncode == 0)
 			{
-				gRecordingNextEncode = Time * LimitFramerate;
+				gRecordingNextEncode = Frame->Time * LimitFramerate;
 			}
 			gRecordingNextEncode += gTickFreq.QuadPart;
 		}
 	}
 
+	// ignore frames if it comes from the past
+	if (Frame->Time <= gRecordingLastFrame)
+	{
+		DoEncode = FALSE;
+	}
+	gRecordingLastFrame = Frame->Time;
+
 	if (DoEncode)
 	{
-		if (!Encoder_NewFrame(&gEncoder, Texture, Rect, Time, gTickFreq.QuadPart))
+		if (!Encoder_NewFrame(&gEncoder, Frame->Texture, Frame->Rect, Frame->Time, gTickFreq.QuadPart))
 		{
 			// TODO: maybe highlight tray icon when droppped frames are increasing too much?
 			gRecordingDroppedFrames++;
@@ -1290,7 +1305,7 @@ static void OnCaptureFrame(ID3D11Texture2D* Texture, RECT Rect, UINT64 Time)
 
 		if (gConfig.EnableLimitLength)
 		{
-			if (Time - gEncoder.StartTime >= (UINT64)(gConfig.LimitLength * gTickFreq.QuadPart))
+			if (Frame->Time - gEncoder.StartTime >= (UINT64)(gConfig.LimitLength * gTickFreq.QuadPart))
 			{
 				Stop = TRUE;
 			}
@@ -1311,22 +1326,24 @@ static void OnCaptureFrame(ID3D11Texture2D* Texture, RECT Rect, UINT64 Time)
 		if (Stop)
 		{
 			PostMessageW(gWindow, WM_WCAP_STOP_CAPTURE, 0, 0);
-			return;
+			return true;
 		}
 	}
 
 	// update tray title with stats once every second
 	if (gRecordingNextTooltip == 0)
 	{
-		gRecordingNextTooltip = Time + gTickFreq.QuadPart;
+		gRecordingNextTooltip = Frame->Time + gTickFreq.QuadPart;
 	}
-	else if (Time >= gRecordingNextTooltip)
+	else if (Frame->Time >= gRecordingNextTooltip)
 	{
 		gRecordingNextTooltip += gTickFreq.QuadPart;
 
 		// do the update, but not from frame callback to minimize time when texture is used
 		PostMessageW(gWindow, WM_WCAP_TRAY_TITLE, 0, 0);
 	}
+
+	return true;
 }
 
 #ifndef NDEBUG
@@ -1350,7 +1367,7 @@ void WinMainCRTStartup()
 		ExitProcess(0);
 	}
 
-	if (!Capture_IsSupported())
+	if (!ScreenCapture_IsSupported())
 	{
 		MessageBoxW(NULL, L"Windows 10 Version 1903, May 2019 Update (19H1) or newer is required!", WCAP_TITLE, MB_ICONEXCLAMATION);
 		ExitProcess(0);
@@ -1363,7 +1380,7 @@ void WinMainCRTStartup()
 
 	Config_Defaults(&gConfig);
 	Config_Load(&gConfig, gConfigPath);
-	Capture_Init(&gCapture, &OnCaptureClose, &OnCaptureFrame);
+	ScreenCapture_Create(&gCapture, &OnCaptureFrame, false);
 	Encoder_Init(&gEncoder);
 
 	QueryPerformanceFrequency(&gTickFreq);

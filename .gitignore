@@ -1,3 +1,5 @@
+shaders/
+
 .git/
 .cspell/
 .build/

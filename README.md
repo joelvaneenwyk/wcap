@@ -57,7 +57,19 @@ maximum amount of frames per second. Setting it to zero will use compositor fram
 rate. Lower video framerate will give higher quality video for same bitrate and reduced GPU usage. If you notice too many
 dropped frames during recording, try reducing video resolution and framerate.
 
-Capture of mouse cursor in video can be disabled only when using Windows 10 version 2004, May 2020 Update (20H1) or newer.
+Capture of mouse cursor can be disabled only when using Windows 10 version 2004, May 2020 Update (20H1) or newer.
+
+On Windows 11 you can disable yellow recording borders, or rounded window corners.
+
+HEVC Software Encoding
+======================
+
+HEVC encoding in software (on CPU) will require installing HEVC Video Extensions from Windows Store. It will support only
+8-bit encoding. You can get direct download to installer package without using Windows Store with following steps:
+
+1) open https://store.rg-adguard.net/
+2) search `https://www.microsoft.com/store/productId/9n4wgh0z6vhq` for `Retail` channel
+3) download & run .appxbundle package it gives you
 
 ## Creating gif from mp4
 
@@ -67,7 +79,7 @@ If you want to create gif file out of recorded mp4 file, you can use following .
 
     ffmpeg.exe -hide_banner -nostdin -loglevel fatal -stats -y -i %1 -filter_complex "[0]fps=15,split[v0][v1];[v0]palettegen=stats_mode=full[p];[v1][p]paletteuse" %~n1.gif
 
-And to use new palette every frame to have more colors, but larger file size:
+Or to create new palette every frame for more colors, but larger file size:
 
     ffmpeg.exe -hide_banner -nostdin -loglevel fatal -stats -y -i %1 -filter_complex "[0]fps=15,split[v0][v1];[v0]palettegen=stats_mode=single[p];[v1][p]paletteuse=new=1" %~n1.gif
 

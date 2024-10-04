@@ -1,5 +1,5 @@
 @echo off
-goto:$main
+goto:$alt
 
 :$main
 setlocal enabledelayedexpansion
@@ -59,23 +59,15 @@ setlocal enabledelayedexpansion
   )
 endlocal & exit /b %WCAP_RETURN_CODE%
 
-@echo off
-
-
-
+:$alt
 setlocal enabledelayedexpansion
-
-
-
-
-
 where /Q cl.exe || (
   set __VSCMD_ARG_NO_LOGO=1
   for /f "tokens=*" %%i in ('"C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -latest -requires Microsoft.VisualStudio.Workload.NativeDesktop -property installationPath') do set VS=%%i
   if "!VS!" equ "" (
     echo ERROR: Visual Studio installation not found
     exit /b 1
-  )  
+  )
   call "!VS!\VC\Auxiliary\Build\vcvarsall.bat" amd64 || exit /b 1
 )
 
@@ -121,4 +113,3 @@ if not exist shaders mkdir shaders
 fxc.exe /nologo %FXC% /WX /Ges /T cs_5_0 /E %1 /Fo shaders\%1.dxbc /Fc shaders\%1.asm wcap_shaders.hlsl || exit /b 1
 fxc.exe /nologo /compress /Vn %1ShaderBytes /Fo shaders\%1.dcs /Fh shaders\%1.h shaders\%1.dxbc || exit /b 1
 goto :eof
-

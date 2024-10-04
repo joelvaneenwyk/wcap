@@ -924,7 +924,7 @@ static void Config__GetStr(LPCWSTR FileName, LPCWSTR Key, DWORD* Value, const LP
 static void Config__ValidateVideoProfile(Config* C)
 {
 	const int* Profiles = gValidVideoProfiles[C->VideoCodec];
-	DWORD LastProfile;
+	DWORD LastProfile = 0;
 	for (int i=0; Profiles[i] != -1; i++)
 	{
 		LastProfile = Profiles[i];

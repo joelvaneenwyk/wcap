@@ -155,7 +155,7 @@ void YuvConvert_Create(YuvConvert* Convert, ID3D11Device* Device, ID3D11Texture2
 		{ 1.f, +1.772000f, +0.000000f },
 	};
 
-	const float (*ConvertMatrix)[4];
+	const float (*ConvertMatrix)[4] = { 0 };
 	switch (ColorSpace)
 	{
 	case YuvColorSpace_BT601:  ConvertMatrix = BT601;  break;
@@ -188,7 +188,7 @@ void YuvConvert_Create(YuvConvert* Convert, ID3D11Device* Device, ID3D11Texture2
 		HR(D3DDecompressShaders(ConvertPass2ShaderBytes, sizeof(ConvertPass2ShaderBytes), 1, 0, NULL, 0, &Shader, NULL));
 		ID3D11Device_CreateComputeShader(Device, ID3D10Blob_GetBufferPointer(Shader), ID3D10Blob_GetBufferSize(Shader), NULL, &Convert->Pass2);
 		ID3D10Blob_Release(Shader);
-		
+
 		Convert->SinglePass = NULL;
 	}
 	else

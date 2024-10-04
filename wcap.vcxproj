@@ -166,9 +166,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="wcap_capture.c" />
-    <ClCompile Include="wcap_config.c" />
-    <ClCompile Include="wcap_encoder.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="wcap.h" />

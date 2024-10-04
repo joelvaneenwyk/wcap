@@ -1,0 +1,105 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+# https://taskfile.dev
+
+version: "3"
+
+vars:
+  DEFAULT_CONFIG: Release
+  DEFAULT_PLATFORM: x64
+  DEFAULT_SOLUTION: wcap.sln
+
+tasks:
+  default:
+    cmds:
+      - task: build
+
+  fxc:
+    requires:
+      vars: [FXC_SHADER_NAME]
+    vars:
+      FXC_EXE:
+        sh: | # shell
+          strings=("10.0.26100.0" "10.22621.0")
+          for str in "${strings[@]}"
+          do
+            result="C:/Program Files (x86)/Windows Kits/10/bin/${str}/x64/fxc.exe"
+            if [ -e "$result" ]; then
+              echo "$result"
+              break
+            fi
+          done
+    env:
+      # if "%1" equ "debug" (
+      #   set CL=/MTd /Od /Zi /D_DEBUG /RTC1 /Fdwcap.pdb /fsanitize=address
+      #   set LINK=/DEBUG
+      #   set FXC=/Od /Zi
+      # ) else (
+      #   set CL=/GL /O1 /Oi /DNDEBUG /GS-
+      #   set LINK=/LTCG /OPT:REF /OPT:ICF ucrt.lib libvcruntime.lib
+      #   set FXC=/O3 /Qstrip_reflect /Qstrip_debug /Qstrip_priv
+      # )
+      CL: /GL /O1 /Oi /DNDEBUG /GS-
+      LINK: /LTCG /OPT:REF /OPT:ICF ucrt.lib libvcruntime.lib
+      FXC: /O3 /Qstrip_reflect /Qstrip_debug /Qstrip_priv
+    cmds:
+      - cmd: | # shell
+          mkdir -p shaders
+          "{{.FXC_EXE}}" /nologo \
+            $FXC /WX /Ges /T cs_5_0  \
+            /E "{{ .FXC_SHADER_NAME }}" \
+            /Fo "shaders/{{ .FXC_SHADER_NAME }}.dxbc" \
+            /Fc "shaders/{{ .FXC_SHADER_NAME }}.asm" \
+            wcap_shaders.hlsl
+          "{{.FXC_EXE}}" /nologo \
+            /compress \
+            /Vn "{{ .FXC_SHADER_NAME }}ShaderBytes" \
+            /Fo "shaders/{{ .FXC_SHADER_NAME }}.dcs" \
+            /Fh "shaders/{{ .FXC_SHADER_NAME }}.h" \
+            "shaders/{{ .FXC_SHADER_NAME }}.dxbc"
+
+  shaders:
+    deps:
+      - for:
+          matrix:
+            OS: [
+              "ResizePassH",
+              "ResizePassV",
+              "ResizeLinearPassH",
+              "ResizeLinearPassV",
+              "ConvertSinglePass",
+              "ConvertPass1",
+              "ConvertPass2"
+            ]
+        task: fxc
+        vars: { FXC_SHADER_NAME: "{{.ITEM.OS}}" }
+
+  build:
+    deps: [shaders]
+    aliases: [b, bld]
+    silent: true
+    env:
+      __VSCMD_ARG_NO_LOGO: 1
+    vars:
+      MSBUILD:
+        sh: | # shell
+          strings=("Preview" "Enterprise" "Professional" "Community")
+          for str in "${strings[@]}"
+          do
+            result="C:/Program Files/Microsoft Visual Studio/2022/${str}/MSBuild/Current/Bin/amd64/MSBuild.exe"
+            if [ -e "$result" ]; then
+              echo "$result"
+              break
+            fi
+          done
+      MSBUILD_CONFIG: '{{ .CONFIG | default .DEFAULT_CONFIG }}'
+      MSBUILD_SOLUTION: '{{ joinPath .TASKFILE_DIR (.SOLUTION | default .DEFAULT_SOLUTION) }}'
+      MSBUILD_PLATFORM: '{{ .PLATFORM | default .DEFAULT_PLATFORM }}'
+    cmds:
+      - cmd: echo "Building '{{ .MSBUILD_SOLUTION }}' with '{{ .MSBUILD_CONFIG }}' configuration."
+      - cmd: >-
+          "{{fromSlash .MSBUILD}}"
+          /m
+          /t:Build
+          /p:Configuration="{{.MSBUILD_CONFIG}}"
+          /p:Platform="{{.MSBUILD_PLATFORM}}"
+          "{{fromSlash .MSBUILD_SOLUTION}}"

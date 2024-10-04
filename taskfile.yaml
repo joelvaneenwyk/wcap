@@ -44,12 +44,16 @@ tasks:
     cmds:
       - cmd: | # shell
           mkdir -p shaders
+      - cmd: | # shell
+          # ...
           "{{.FXC_EXE}}" /nologo \
             $FXC /WX /Ges /T cs_5_0  \
             /E "{{ .FXC_SHADER_NAME }}" \
             /Fo "shaders/{{ .FXC_SHADER_NAME }}.dxbc" \
             /Fc "shaders/{{ .FXC_SHADER_NAME }}.asm" \
             wcap_shaders.hlsl
+      - cmd: | # shell
+          # ...
           "{{.FXC_EXE}}" /nologo \
             /compress \
             /Vn "{{ .FXC_SHADER_NAME }}ShaderBytes" \

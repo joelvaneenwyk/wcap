@@ -450,7 +450,7 @@ bool AudioCapture_GetData(AudioCapture* Capture, AudioCaptureData* Data, uint64_
 	CopyMemory(&Position, BufferPtr, sizeof(Position)); BufferPtr += sizeof(Position);
 	CopyMemory(&Timestamp, BufferPtr, sizeof(Timestamp)); BufferPtr += sizeof(Timestamp);
 
-	uint32_t ReadSize = sizeof(Frames) + sizeof(Position) + sizeof(Timestamp) + Frames * Capture->Format->nBlockAlign;
+	uint32_t ReadSize = sizeof(Frames) + sizeof(Position) + sizeof(Timestamp) + Frames * (uint64_t)Capture->Format->nBlockAlign;
 	if (AvailableSize < ReadSize)
 	{
 		return false;
@@ -490,7 +490,7 @@ bool AudioCapture_GetData(AudioCapture* Capture, AudioCaptureData* Data, uint64_
 
 void AudioCapture_ReleaseData(AudioCapture* Capture, AudioCaptureData* Data)
 {
-	uint32_t ReadSize = (uint32_t)(sizeof(uint32_t) + sizeof(uint64_t) + sizeof(uint64_t) + Data->Count * Capture->Format->nBlockAlign);
+	uint32_t ReadSize = (uint32_t)(sizeof(uint32_t) + sizeof(uint64_t) + sizeof(uint64_t) + Data->Count * (uint64_t)Capture->Format->nBlockAlign);
 	Assert(ReadSize <= Capture->BufferWrite - Capture->BufferRead);
 	InterlockedAdd(&Capture->BufferRead, ReadSize);
 }

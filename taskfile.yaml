@@ -84,31 +84,28 @@ tasks:
         sh: |
           "C:/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe" \
             -latest -requires Microsoft.VisualStudio.Workload.NativeDesktop -property installationPath
+
       GIT_TAG:
         sh: git describe --always --dirty
-    env:
-      __VSCMD_ARG_NO_LOGO: 1
 
       CL_DEBUG: /MTd /Od /Zi /D_DEBUG /RTC1 /Fdwcap.pdb /fsanitize=address
       LINK_DEBUG: /DEBUG
 
       CL_RELEASE: /GL /O1 /Oi /DNDEBUG /GS-
       LINK_RELEASE: /LTCG /OPT:REF /OPT:ICF ucrt.lib libvcruntime.lib
-
+    env:
+      __VSCMD_ARG_NO_LOGO: 1
       CL: '{{ if eq .CONFIG "Release" }}{{ .CL_RELEASE }}{{ else }}{{ .CL_DEBUG }}{{ end }}'
       LINK: '{{ if eq .CONFIG "Release" }}{{ .LINK_RELEASE }}{{ else }}{{ .LINK_DEBUG }}{{ end }}'
       VSVARS: '{{ joinPath .MSVC_ROOT "VC/Auxiliary/Build/vcvarsall.bat" | fromSlash }}'
     sources:
-      - wcap.sln
-      - wcap.manifest
-      - wcap.vcxproj*
-      - wcap*.c
       - wcap*.h
-      - wcap*.ico
+      - wcap*.hlsl
+      - wcap*.c
       - wcap*.rc
       - shaders/
     generates:
-      - bin/x64/{{.MSBUILD_CONFIG}}/wcap.*
+      - wcap.exe
     cmds:
       - cmd: >-
           cmd.exe /d /e:on /c "
@@ -138,20 +135,17 @@ tasks:
               break
             fi
           done
-      MSBUILD_CONFIG: '{{ .CONFIG | default .DEFAULT_CONFIG }}'
-      MSBUILD_SOLUTION: '{{ joinPath .TASKFILE_DIR (.SOLUTION | default .DEFAULT_SOLUTION) }}'
-      MSBUILD_PLATFORM: '{{ .PLATFORM | default .DEFAULT_PLATFORM }}'
+      MSBUILD_CONFIG: '{{ coalesce .CONFIG .DEFAULT_CONFIG "Debug" }}'
+      MSBUILD_PLATFORM: '{{ coalesce .PLATFORM .DEFAULT_PLATFORM "x64" }}'
+      MSBUILD_SOLUTION: '{{ joinPath .TASKFILE_DIR (coalesce .SOLUTION .DEFAULT_SOLUTION) }}'
     sources:
-      - wcap.sln
-      - wcap.manifest
-      - wcap.vcxproj*
-      - wcap*.c
       - wcap*.h
-      - wcap*.ico
+      - wcap*.hlsl
+      - wcap*.c
       - wcap*.rc
       - shaders/
     generates:
-      - bin/x64/{{.MSBUILD_CONFIG}}/wcap.*
+      - bin/x64/{{.MSBUILD_CONFIG}}/wcap.exe
     cmds:
       - cmd: >-
           "{{fromSlash .MSBUILD}}"

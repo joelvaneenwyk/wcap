@@ -14,6 +14,8 @@ tasks:
       - task: build
 
   fxc:
+    desc: Compile a single HLSL shader.
+    internal: true
     label: "{{ .FXC_SHADER_NAME }}"
     requires:
       vars: [FXC_SHADER_NAME]
@@ -74,9 +76,18 @@ tasks:
             ]
         task: fxc
         vars: { FXC_SHADER_NAME: "{{.ITEM.OS}}" }
+    desc: Compile all HLSL shader variants.
+
+  run:
+    deps: [msbuild]
+    desc: Build and run the application.
+    cmds:
+      - cmd: |
+          "{{ joinPath .TASKFILE_DIR "bin/x64/Release/wcap.exe" }}" {{.CLI_ARGS}}
 
   build:
     deps: [shaders]
+    desc: Build the application manually using the MSVC compiler. Intended to match 'build.cmd' behavior.
     aliases: [b, bld]
     silent: true
     vars:
@@ -109,7 +120,9 @@ tasks:
     cmds:
       - cmd: >-
           cmd.exe /d /e:on /c "
-          "$VSVARS" x64
+          echo [vcvars] Setting up Visual Studio environment
+          && "$VSVARS" x64
+          && echo [cl] Compiling 'wcap.rc' and 'wcap.c'
           && rc.exe /nologo wcap.rc
           && cl.exe /nologo
           /W3 /WX
@@ -120,6 +133,8 @@ tasks:
           /SUBSYSTEM:WINDOWS /FIXED /merge:_RDATA=.rdata
           "
 
+  # Build the application using MSBuild and the Visual Studio solution files. This
+  # path is unique to this fork.
   msbuild:
     deps: [shaders]
     silent: true

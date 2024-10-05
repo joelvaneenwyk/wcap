@@ -12,7 +12,9 @@ downscaled
 DQTAT
 DQTYPE
 droppped
+DWCAP
 DWMWA
+dxbc
 enabledelayedexpansion
 endlocal
 ERRORLEVEL
@@ -54,11 +56,14 @@ Shor
 shorcuts
 strmiids
 TASKBARCREATED
+TASKFILE
 tcuts
 tlog
 ucrt
+vcvars
 vcvarsall
 VSCMD
+VSVARS
 vswhere
 WASAPI
 wcap

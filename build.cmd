@@ -1,6 +1,12 @@
 @echo off
 goto:$main
 
+:fxc
+    if not exist shaders mkdir shaders
+    fxc.exe /nologo %FXC% /WX /Ges /T cs_5_0 /E %1 /Fo shaders\%1.dxbc /Fc shaders\%1.asm wcap_shaders.hlsl || exit /b 1
+    fxc.exe /nologo /compress /Vn %1ShaderBytes /Fo shaders\%1.dcs /Fh shaders\%1.h shaders\%1.dxbc || exit /b 1
+goto :eof
+
 :$main
 setlocal enabledelayedexpansion
   cd /d "%~dp0"
@@ -29,25 +35,32 @@ setlocal enabledelayedexpansion
   )
 
   if "%~1" equ "debug" (
-    set "CL=/MTd /Od /Zi /D_DEBUG /RTC1 /Fdwcap.pdb /fsanitize=address"
-    set "LINK=/DEBUG"
+    set CL=/MTd /Od /Zi /D_DEBUG /RTC1 /Fdwcap.pdb /fsanitize=address
+    set LINK=/DEBUG
+    set FXC=/Od /Zi
   ) else (
-    set "CL=/GL /O1 /DNDEBUG /GS-"
-    set "LINK=/LTCG /OPT:REF /OPT:ICF ucrt.lib libvcruntime.lib"
+    set CL=/GL /O1 /Oi /DNDEBUG /GS-
+    set LINK=/LTCG /OPT:REF /OPT:ICF ucrt.lib libvcruntime.lib
+    set FXC=/O3 /Qstrip_reflect /Qstrip_debug /Qstrip_priv
   )
 
-  fxc.exe /nologo /T cs_5_0 /E Resize  /O3 /WX /Fh wcap_resize_shader.h /Vn ResizeShaderBytes /Qstrip_reflect /Qstrip_debug /Qstrip_priv wcap_shaders.hlsl
-  if errorlevel 1 goto:$main_end
-  fxc.exe /nologo /T cs_5_0 /E Convert /O3 /WX /Fh wcap_convert_shader.h /Vn ConvertShaderBytes /Qstrip_reflect /Qstrip_debug /Qstrip_priv wcap_shaders.hlsl
-  if errorlevel 1 goto:$main_end
+  call :fxc ResizePassH            || goto:$main_end
+  call :fxc ResizePassV            || goto:$main_end
+  call :fxc ResizeLinearPassH      || goto:$main_end
+  call :fxc ResizeLinearPassV      || goto:$main_end
+  call :fxc ConvertSinglePass      || goto:$main_end
+  call :fxc ConvertPass1           || goto:$main_end
+  call :fxc ConvertPass2           || goto:$main_end
 
-  rc.exe /nologo wcap.rc
-  if errorlevel 1 goto:$main_end
+  for /f %%i in ('call git describe --always --dirty') do set CL=%CL% -DWCAP_GIT_INFO=\"%%i\"
 
-  cl.exe /nologo /W3 /WX /MP *.c /Fewcap.exe wcap.res /link /INCREMENTAL:NO /MANIFEST:EMBED /MANIFESTINPUT:wcap.manifest /SUBSYSTEM:WINDOWS /FIXED /merge:_RDATA=.rdata
-  if errorlevel 1 goto:$main_end
-
-  del *.obj *.res >nul
+  rc.exe /nologo wcap.rc || goto:$main_end
+  cl.exe /nologo ^
+    /W3 /WX wcap.c wcap.res ^
+    /link /INCREMENTAL:NO ^
+    /MANIFEST:EMBED /MANIFESTINPUT:wcap.manifest ^
+    /SUBSYSTEM:WINDOWS /FIXED /merge:_RDATA=.rdata || goto:$main_end
+  del *.obj *.res *.exp *.lib >nul
   goto:$main_end
 
   :$main_end

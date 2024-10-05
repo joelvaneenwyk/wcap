@@ -1,3 +1,5 @@
+shaders/
+
 .git/
 .cspell/
 .build/
@@ -23,3 +25,5 @@ Win32/
 *.log
 *.idb
 *.vcxproj.user
+
+.task/

@@ -14,6 +14,7 @@ tasks:
       - task: build
 
   fxc:
+    label: "{{ .FXC_SHADER_NAME }}"
     requires:
       vars: [FXC_SHADER_NAME]
     vars:
@@ -29,18 +30,23 @@ tasks:
             fi
           done
     env:
-      # if "%1" equ "debug" (
-      #   set CL=/MTd /Od /Zi /D_DEBUG /RTC1 /Fdwcap.pdb /fsanitize=address
-      #   set LINK=/DEBUG
-      #   set FXC=/Od /Zi
-      # ) else (
-      #   set CL=/GL /O1 /Oi /DNDEBUG /GS-
-      #   set LINK=/LTCG /OPT:REF /OPT:ICF ucrt.lib libvcruntime.lib
-      #   set FXC=/O3 /Qstrip_reflect /Qstrip_debug /Qstrip_priv
-      # )
-      CL: /GL /O1 /Oi /DNDEBUG /GS-
-      LINK: /LTCG /OPT:REF /OPT:ICF ucrt.lib libvcruntime.lib
-      FXC: /O3 /Qstrip_reflect /Qstrip_debug /Qstrip_priv
+      CL_DEBUG: /MTd /Od /Zi /D_DEBUG /RTC1 /Fdwcap.pdb /fsanitize=address
+      LINK_DEBUG: /DEBUG
+      FXC_DEBUG: /Od /Zi
+
+      CL_RELEASE: /GL /O1 /Oi /DNDEBUG /GS-
+      LINK_RELEASE: /LTCG /OPT:REF /OPT:ICF ucrt.lib libvcruntime.lib
+      FXC_RELEASE: /O3 /Qstrip_reflect /Qstrip_debug /Qstrip_priv
+
+      CL: '{{ if eq .CONFIG "Release" }}{{ .CL_RELEASE }}{{ else }}{{ .CL_DEBUG }}{{ end }}'
+      LINK: '{{ if eq .CONFIG "Release" }}{{ .LINK_RELEASE }}{{ else }}{{ .LINK_DEBUG }}{{ end }}'
+      FXC: '{{ if eq .CONFIG "Release" }}{{ .FXC_RELEASE }}{{ else }}{{ .FXC_DEBUG }}{{ end }}'
+    sources:
+      - wcap_shaders.hlsl
+    generates:
+      - shaders/{{ .FXC_SHADER_NAME }}.dxbc
+      - shaders/{{ .FXC_SHADER_NAME }}.dcs
+      - shaders/{{ .FXC_SHADER_NAME }}.h
     cmds:
       - cmd: | # shell
           mkdir -p shaders
@@ -89,7 +95,7 @@ tasks:
           strings=("Preview" "Enterprise" "Professional" "Community")
           for str in "${strings[@]}"
           do
-            result="C:/Program Files/Microsoft Visual Studio/2022/${str}/MSBuild/Current/Bin/amd64/MSBuild.exe"
+            result="C:/Program Files/Microsoft Visual Studio/2022/${str}/MSBuild/Current/Bin/MSBuild.exe"
             if [ -e "$result" ]; then
               echo "$result"
               break
@@ -98,6 +104,17 @@ tasks:
       MSBUILD_CONFIG: '{{ .CONFIG | default .DEFAULT_CONFIG }}'
       MSBUILD_SOLUTION: '{{ joinPath .TASKFILE_DIR (.SOLUTION | default .DEFAULT_SOLUTION) }}'
       MSBUILD_PLATFORM: '{{ .PLATFORM | default .DEFAULT_PLATFORM }}'
+    sources:
+      - wcap.sln
+      - wcap.manifest
+      - wcap.vcxproj*
+      - wcap*.c
+      - wcap*.h
+      - wcap*.ico
+      - wcap*.rc
+      - shaders/
+    generates:
+      - bin/x64/{{.MSBUILD_CONFIG}}/wcap.*
     cmds:
       - cmd: echo "Building '{{ .MSBUILD_SOLUTION }}' with '{{ .MSBUILD_CONFIG }}' configuration."
       - cmd: >-

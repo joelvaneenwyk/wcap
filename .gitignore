@@ -25,3 +25,5 @@ Win32/
 *.log
 *.idb
 *.vcxproj.user
+
+.task/

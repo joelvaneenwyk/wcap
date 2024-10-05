@@ -627,7 +627,7 @@ BOOL Encoder_Start(Encoder* Encoder, ID3D11Device* Device, LPWSTR FileName, cons
 
 			HR(MFCreateTrackedSample(&Tracked));
 			HR(IMFTrackedSample_QueryInterface(Tracked, &IID_IMFSample, (LPVOID*)&Sample));
-			HR(MFCreateMemoryBuffer(Config->Config->AudioSamplerate * Config->Config->AudioChannels * sizeof(short), &Buffer));
+			HR(MFCreateMemoryBuffer((unsigned long long)Config->Config->AudioSamplerate * Config->Config->AudioChannels * sizeof(short), &Buffer));
 			HR(IMFSample_AddBuffer(Sample, Buffer));
 			IMFMediaBuffer_Release(Buffer);
 			IMFTrackedSample_Release(Tracked);

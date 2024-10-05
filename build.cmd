@@ -44,19 +44,23 @@ setlocal enabledelayedexpansion
     set FXC=/O3 /Qstrip_reflect /Qstrip_debug /Qstrip_priv
   )
 
-  call :fxc ResizePassH            || exit /b 1
-  call :fxc ResizePassV            || exit /b 1
-  call :fxc ResizeLinearPassH      || exit /b 1
-  call :fxc ResizeLinearPassV      || exit /b 1
-  call :fxc ConvertSinglePass      || exit /b 1
-  call :fxc ConvertPass1           || exit /b 1
-  call :fxc ConvertPass2           || exit /b 1
+  call :fxc ResizePassH            || goto:$main_end
+  call :fxc ResizePassV            || goto:$main_end
+  call :fxc ResizeLinearPassH      || goto:$main_end
+  call :fxc ResizeLinearPassV      || goto:$main_end
+  call :fxc ConvertSinglePass      || goto:$main_end
+  call :fxc ConvertPass1           || goto:$main_end
+  call :fxc ConvertPass2           || goto:$main_end
 
   for /f %%i in ('call git describe --always --dirty') do set CL=%CL% -DWCAP_GIT_INFO=\"%%i\"
 
-  rc.exe /nologo wcap.rc || exit /b 1
-  cl.exe /nologo /W3 /WX wcap.c wcap.res /link /INCREMENTAL:NO /MANIFEST:EMBED /MANIFESTINPUT:wcap.manifest /SUBSYSTEM:WINDOWS /FIXED /merge:_RDATA=.rdata || exit /b 1
-  del *.obj *.res >nul
+  rc.exe /nologo wcap.rc || goto:$main_end
+  cl.exe /nologo ^
+    /W3 /WX wcap.c wcap.res ^
+    /link /INCREMENTAL:NO ^
+    /MANIFEST:EMBED /MANIFESTINPUT:wcap.manifest ^
+    /SUBSYSTEM:WINDOWS /FIXED /merge:_RDATA=.rdata || goto:$main_end
+  del *.obj *.res *.exp *.lib >nul
   goto:$main_end
 
   :$main_end

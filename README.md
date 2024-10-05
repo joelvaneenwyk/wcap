@@ -9,10 +9,9 @@ Simple and efficient screen recording utility for Windows.
 
 <!-- markdownlint-disable MD033 -->
 
-- press <kbd>Ctrl + PrintScreen</kbd> to start recording current monitor (where mouse cursor currently is positioned)
-
-- press <kbd>Ctrl + Win + PrintScreen</kbd> to start recording currently active window
-- press <kbd>Ctrl + Shift + PrintScreen</kbd> to select & record fixed position area on current monitor
+- press <kbd>Ctrl</kbd> + <kbd>PrintScreen</kbd> to start recording current monitor (where mouse cursor currently is positioned)
+- press <kbd>Ctrl</kbd> + <kbd>Win</kbd> + <kbd>PrintScreen</kbd> to start recording currently active window
+- press <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>PrintScreen</kbd> to select & record fixed position area on current monitor
 - press any of previous combinations to stop recording
 - right or double-click on tray icon to change settings
 - video encoded using [H264/AVC][] or [H265/HEVC][], with 10-bit support for HEVC
@@ -39,7 +38,7 @@ software encoder. You might want to explicitly use software encoder on older GPU
 H265 encoding might require installing HEVC package from Microsoft Store - copy following link into Explorer address bar,
 or in Start->Run dialog:
 
-```
+```plaintext
 windows-store://pdp/?ProductId=9n4wgh0z6vhq
 ```
 
@@ -61,27 +60,28 @@ Capture of mouse cursor can be disabled only when using Windows 10 version 2004,
 
 On Windows 11 you can disable yellow recording borders, or rounded window corners.
 
-HEVC Software Encoding
-======================
+## HEVC Software Encoding
 
 HEVC encoding in software (on CPU) will require installing HEVC Video Extensions from Windows Store. It will support only
 8-bit encoding. You can get direct download to installer package without using Windows Store with following steps:
 
-1) open https://store.rg-adguard.net/
+1) open <https://store.rg-adguard.net/>
 2) search `https://www.microsoft.com/store/productId/9n4wgh0z6vhq` for `Retail` channel
 3) download & run .appxbundle package it gives you
 
 ## Creating gif from mp4
 
-=====================
-
 If you want to create gif file out of recorded mp4 file, you can use following .bat file:
 
-    ffmpeg.exe -hide_banner -nostdin -loglevel fatal -stats -y -i %1 -filter_complex "[0]fps=15,split[v0][v1];[v0]palettegen=stats_mode=full[p];[v1][p]paletteuse" %~n1.gif
+```bash
+ffmpeg.exe -hide_banner -nostdin -loglevel fatal -stats -y -i %1 -filter_complex "[0]fps=15,split[v0][v1];[v0]palettegen=stats_mode=full[p];[v1][p]paletteuse" %~n1.gif
+```
 
 Or to create new palette every frame for more colors, but larger file size:
 
-    ffmpeg.exe -hide_banner -nostdin -loglevel fatal -stats -y -i %1 -filter_complex "[0]fps=15,split[v0][v1];[v0]palettegen=stats_mode=single[p];[v1][p]paletteuse=new=1" %~n1.gif
+```bash
+ffmpeg.exe -hide_banner -nostdin -loglevel fatal -stats -y -i %1 -filter_complex "[0]fps=15,split[v0][v1];[v0]palettegen=stats_mode=single[p];[v1][p]paletteuse=new=1" %~n1.gif
+```
 
 Put this line in `make_gif.bat` file, place [ffmpeg][] executable next to it and then simply drag & drop .mp4 file on top of it.
 Change `fps=15` to desired gif fps (or remove to use original video fps). Check the [paletteuse][] filter arguments for
@@ -164,7 +164,6 @@ This is free and unencumbered software released into the public domain.
 Anyone is free to copy, modify, publish, use, compile, sell, or distribute this software, either in source code form or as
 a compiled binary, for any purpose, commercial or non-commercial, and by any means.
 
-[wcap.exe]: https://raw.githubusercontent.com/wiki/mmozeiko/wcap/wcap.exe
 [wgc]: https://blogs.windows.com/windowsdeveloper/2019/09/16/new-ways-to-do-screen-capture/
 [MSMFH264]: https://docs.microsoft.com/en-us/windows/win32/medfound/h-264-video-encoder
 [VS]: https://visualstudio.microsoft.com/vs/

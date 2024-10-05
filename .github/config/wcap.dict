@@ -60,6 +60,7 @@ TASKFILE
 tcuts
 tlog
 ucrt
+vcvars
 vcvarsall
 VSCMD
 VSVARS

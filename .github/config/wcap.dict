@@ -12,6 +12,7 @@ downscaled
 DQTAT
 DQTYPE
 droppped
+DWCAP
 DWMWA
 dxbc
 enabledelayedexpansion
@@ -61,6 +62,7 @@ tlog
 ucrt
 vcvarsall
 VSCMD
+VSVARS
 vswhere
 WASAPI
 wcap

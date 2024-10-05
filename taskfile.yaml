@@ -80,27 +80,10 @@ tasks:
     aliases: [b, bld]
     silent: true
     vars:
-      MSBUILD:
-        sh: | # shell
-          strings=("Preview" "Enterprise" "Professional" "Community")
-          for str in "${strings[@]}"
-          do
-            result="C:/Program Files/Microsoft Visual Studio/2022/${str}/MSBuild/Current/Bin/MSBuild.exe"
-            if [ -e "$result" ]; then
-              echo "$result"
-              break
-            fi
-          done
-
       MSVC_ROOT:
         sh: |
           "C:/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe" \
             -latest -requires Microsoft.VisualStudio.Workload.NativeDesktop -property installationPath
-
-      MSBUILD_CONFIG: '{{ .CONFIG | default .DEFAULT_CONFIG }}'
-      MSBUILD_SOLUTION: '{{ joinPath .TASKFILE_DIR (.SOLUTION | default .DEFAULT_SOLUTION) }}'
-      MSBUILD_PLATFORM: '{{ .PLATFORM | default .DEFAULT_PLATFORM }}'
-
       GIT_TAG:
         sh: git describe --always --dirty
     env:
@@ -127,7 +110,6 @@ tasks:
     generates:
       - bin/x64/{{.MSBUILD_CONFIG}}/wcap.*
     cmds:
-      - cmd: echo "Building '{{ .MSBUILD_SOLUTION }}' with '{{ .MSBUILD_CONFIG }}' configuration."
       - cmd: >-
           cmd.exe /d /e:on /c "
           "$VSVARS" x64
@@ -140,10 +122,41 @@ tasks:
           /MANIFEST:EMBED /MANIFESTINPUT:wcap.manifest
           /SUBSYSTEM:WINDOWS /FIXED /merge:_RDATA=.rdata
           "
-      # - cmd: >-
-      #     "{{fromSlash .MSBUILD}}"
-      #     /m
-      #     /t:Build
-      #     /p:Configuration="{{.MSBUILD_CONFIG}}"
-      #     /p:Platform="{{.MSBUILD_PLATFORM}}"
-      #     "{{fromSlash .MSBUILD_SOLUTION}}"
+
+  msbuild:
+    deps: [shaders]
+    silent: true
+    vars:
+      MSBUILD:
+        sh: | # shell
+          strings=("Preview" "Enterprise" "Professional" "Community")
+          for str in "${strings[@]}"
+          do
+            result="C:/Program Files/Microsoft Visual Studio/2022/${str}/MSBuild/Current/Bin/MSBuild.exe"
+            if [ -e "$result" ]; then
+              echo "$result"
+              break
+            fi
+          done
+      MSBUILD_CONFIG: '{{ .CONFIG | default .DEFAULT_CONFIG }}'
+      MSBUILD_SOLUTION: '{{ joinPath .TASKFILE_DIR (.SOLUTION | default .DEFAULT_SOLUTION) }}'
+      MSBUILD_PLATFORM: '{{ .PLATFORM | default .DEFAULT_PLATFORM }}'
+    sources:
+      - wcap.sln
+      - wcap.manifest
+      - wcap.vcxproj*
+      - wcap*.c
+      - wcap*.h
+      - wcap*.ico
+      - wcap*.rc
+      - shaders/
+    generates:
+      - bin/x64/{{.MSBUILD_CONFIG}}/wcap.*
+    cmds:
+      - cmd: >-
+          "{{fromSlash .MSBUILD}}"
+          /m
+          /t:Build
+          /p:Configuration="{{.MSBUILD_CONFIG}}"
+          /p:Platform="{{.MSBUILD_PLATFORM}}"
+          "{{fromSlash .MSBUILD_SOLUTION}}"

@@ -30,16 +30,8 @@ tasks:
             fi
           done
     env:
-      CL_DEBUG: /MTd /Od /Zi /D_DEBUG /RTC1 /Fdwcap.pdb /fsanitize=address
-      LINK_DEBUG: /DEBUG
       FXC_DEBUG: /Od /Zi
-
-      CL_RELEASE: /GL /O1 /Oi /DNDEBUG /GS-
-      LINK_RELEASE: /LTCG /OPT:REF /OPT:ICF ucrt.lib libvcruntime.lib
       FXC_RELEASE: /O3 /Qstrip_reflect /Qstrip_debug /Qstrip_priv
-
-      CL: '{{ if eq .CONFIG "Release" }}{{ .CL_RELEASE }}{{ else }}{{ .CL_DEBUG }}{{ end }}'
-      LINK: '{{ if eq .CONFIG "Release" }}{{ .LINK_RELEASE }}{{ else }}{{ .LINK_DEBUG }}{{ end }}'
       FXC: '{{ if eq .CONFIG "Release" }}{{ .FXC_RELEASE }}{{ else }}{{ .FXC_DEBUG }}{{ end }}'
     sources:
       - wcap_shaders.hlsl
@@ -87,8 +79,6 @@ tasks:
     deps: [shaders]
     aliases: [b, bld]
     silent: true
-    env:
-      __VSCMD_ARG_NO_LOGO: 1
     vars:
       MSBUILD:
         sh: | # shell
@@ -101,9 +91,30 @@ tasks:
               break
             fi
           done
+
+      MSVC_ROOT:
+        sh: |
+          "C:/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe" \
+            -latest -requires Microsoft.VisualStudio.Workload.NativeDesktop -property installationPath
+
       MSBUILD_CONFIG: '{{ .CONFIG | default .DEFAULT_CONFIG }}'
       MSBUILD_SOLUTION: '{{ joinPath .TASKFILE_DIR (.SOLUTION | default .DEFAULT_SOLUTION) }}'
       MSBUILD_PLATFORM: '{{ .PLATFORM | default .DEFAULT_PLATFORM }}'
+
+      GIT_TAG:
+        sh: git describe --always --dirty
+    env:
+      __VSCMD_ARG_NO_LOGO: 1
+
+      CL_DEBUG: /MTd /Od /Zi /D_DEBUG /RTC1 /Fdwcap.pdb /fsanitize=address
+      LINK_DEBUG: /DEBUG
+
+      CL_RELEASE: /GL /O1 /Oi /DNDEBUG /GS-
+      LINK_RELEASE: /LTCG /OPT:REF /OPT:ICF ucrt.lib libvcruntime.lib
+
+      CL: '{{ if eq .CONFIG "Release" }}{{ .CL_RELEASE }}{{ else }}{{ .CL_DEBUG }}{{ end }}'
+      LINK: '{{ if eq .CONFIG "Release" }}{{ .LINK_RELEASE }}{{ else }}{{ .LINK_DEBUG }}{{ end }}'
+      VSVARS: '{{ joinPath .MSVC_ROOT "VC/Auxiliary/Build/vcvarsall.bat" | fromSlash }}'
     sources:
       - wcap.sln
       - wcap.manifest
@@ -118,9 +129,21 @@ tasks:
     cmds:
       - cmd: echo "Building '{{ .MSBUILD_SOLUTION }}' with '{{ .MSBUILD_CONFIG }}' configuration."
       - cmd: >-
-          "{{fromSlash .MSBUILD}}"
-          /m
-          /t:Build
-          /p:Configuration="{{.MSBUILD_CONFIG}}"
-          /p:Platform="{{.MSBUILD_PLATFORM}}"
-          "{{fromSlash .MSBUILD_SOLUTION}}"
+          cmd.exe /d /e:on /c "
+          "$VSVARS" x64
+          && rc.exe /nologo wcap.rc
+          && cl.exe /nologo
+          /W3 /WX
+          -DWCAP_GIT_INFO="{{.GIT_TAG}}"
+          wcap.c wcap.res
+          /link /INCREMENTAL:NO
+          /MANIFEST:EMBED /MANIFESTINPUT:wcap.manifest
+          /SUBSYSTEM:WINDOWS /FIXED /merge:_RDATA=.rdata
+          "
+      # - cmd: >-
+      #     "{{fromSlash .MSBUILD}}"
+      #     /m
+      #     /t:Build
+      #     /p:Configuration="{{.MSBUILD_CONFIG}}"
+      #     /p:Platform="{{.MSBUILD_PLATFORM}}"
+      #     "{{fromSlash .MSBUILD_SOLUTION}}"
